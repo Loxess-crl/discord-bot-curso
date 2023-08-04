@@ -59,11 +59,7 @@ client.on(Events.MessageCreate, async (message) => {
 
 client.on(Events.InteractionCreate, async (interaction) => {
 
-  if(interaction.isButton()){
-    await interaction.deferUpdate();
-  }
-
-  if(interaction.isCommand()){
+  if(!interaction.isCommand()) return;
 
     const slashCommand = arraySlashCommands.find((command) => command.data.name === interaction.commandName);
     if(slashCommand){
@@ -74,8 +70,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
             await interaction.reply({content: 'Ocurrió un error xd', ephemeral: true});
         }
     }
-  }
-
    
 });
 //Logear el bot

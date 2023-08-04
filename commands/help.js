@@ -7,17 +7,16 @@ import {
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
   ComponentType,
+  EmbedBuilder,
+  ButtonBuilder,
 } from "discord.js";
-import { ButtonBuilder, EmbedBuilder } from "@discordjs/builders";
-import { arraySlashCommands } from "./index.js";
+import { arraySlashCommands } from "../slashCommands/index.js";
 
-export const aiudaCommand = {
-  data: new SlashCommandBuilder()
-    .setName("aiuda")
-    .setDescription("Comando de ayuda uu"),
-  category: "Utility",
+export const helpCommand = {
+  name: "help",
+  alias: ["ayuda", "aiuda"],
 
-  async execute(interaction) {
+  async execute(message, args) {
     const categories = [
       "Actions",
       "Reactions",
@@ -63,18 +62,18 @@ export const aiudaCommand = {
 
     const menuComponents = new ActionRowBuilder().addComponents(menuOptions);
 
-    const response = await interaction.reply({
+    const response = await message.channel.send({
       embeds: [initialEmbed],
       components: [menuComponents, ButtonComponents],
     });
 
     const collector = await response.createMessageComponentCollector({
       /* componentType: ComponentType.StringSelect, */
-      time: 3*60*1000,
+      time: 3 * 60 * 1000,
     });
 
     collector.on("collect", async (componentInteraction) => {
-      if (componentInteraction.user.id !== interaction.user.id) {
+      if (componentInteraction.user.id !== message.author.id) {
         await componentInteraction.fetchReply();
         await componentInteraction.followUp({
           content: "No puedes usar este comando",
@@ -100,29 +99,29 @@ export const aiudaCommand = {
 
       if (componentInteraction.customId === "cancel") {
         /* await response.edit({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle("Ayuda")
-              .setDescription("Comando cancelado")
-              .setColor(Colors.Red)
-              .setTimestamp(),
-          ],
-          components: [],
-        }); */
+            embeds: [
+              new EmbedBuilder()
+                .setTitle("Ayuda")
+                .setDescription("Comando cancelado")
+                .setColor(Colors.Red)
+                .setTimestamp(),
+            ],
+            components: [],
+          }); */
         response.delete();
         return collector.stop("cancel");
       }
 
       /* if (componentInteraction.customId === "next") {
-        const index = categories.indexOf(initialEmbed.title);
-        const nextCategory = categories[index + 1];
-        const embed = getEmbedByCategory(nextCategory, initialEmbed);
-
-        await componentInteraction.update({
-          embeds: [embed],
-        });
-        return;
-      } */
+          const index = categories.indexOf(initialEmbed.title);
+          const nextCategory = categories[index + 1];
+          const embed = getEmbedByCategory(nextCategory, initialEmbed);
+  
+          await componentInteraction.update({
+            embeds: [embed],
+          });
+          return;
+        } */
     });
 
     collector.on("end", async (collected, reason) => {
@@ -142,24 +141,24 @@ export const aiudaCommand = {
 };
 
 function getEmbedByCategory(category, embed) {
-  embed.setTitle(category);
-  const commands = arraySlashCommands.filter(
-    (command) => command.category.toLowerCase() === category.toLowerCase()
-  );
-  if (!commands.length) {
-    embed.setFields();
-    embed.setDescription(`No hay comandos disponibles para ${category}`);
+    embed.setTitle(category);
+    const commands = arraySlashCommands.filter(
+      (command) => command.category.toLowerCase() === category.toLowerCase()
+    );
+    if (!commands.length) {
+      embed.setFields();
+      embed.setDescription(`No hay comandos disponibles para ${category}`);
+      return embed;
+    }
+    embed.setDescription(
+      `Comandos de la categoría ${category}\nPara más información usa \`/help <comando>\``
+    );
+    commands.forEach((command) => {
+      embed.setFields({
+        name: command.data.name,
+        value: command.data.description,
+      });
+    });
+  
     return embed;
   }
-  embed.setDescription(
-    `Comandos de la categoría ${category}\nPara más información usa \`/help <comando>\``
-  );
-  commands.forEach((command) => {
-    embed.setFields({
-      name: command.data.name,
-      value: command.data.description,
-    });
-  });
-
-  return embed;
-}
