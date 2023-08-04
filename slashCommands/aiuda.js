@@ -15,62 +15,126 @@ export const aiudaCommand = {
   data: new SlashCommandBuilder()
     .setName("aiuda")
     .setDescription("Comando de ayuda uu"),
+  category: "Utility",
 
   async execute(interaction) {
+    const categories = [
+      "Actions",
+      "Reactions",
+      "Random",
+      "Fun",
+      "Moderation",
+      "Utility",
+    ];
 
-    const commands = arraySlashCommands.map((command) => {
-        return {
-            name: command.data.name,
-            description: command.data.description,
-        };
+    const embed = getEmbedByCategory(categories[0]);
+
+    const cancelButton = new ButtonBuilder()
+      .setCustomId("cancel")
+      .setLabel("Cancelar")
+      .setStyle(ButtonStyle.Danger);
+
+    const nextButton = new ButtonBuilder()
+      .setCustomId("next")
+      .setLabel("Siguiente")
+      .setStyle(ButtonStyle.Primary);
+
+    const menuOptions = new StringSelectMenuBuilder()
+      .setCustomId("select")
+      .setPlaceholder("Selecciona una categoría");
+
+    categories.forEach((category) => {
+      menuOptions.addOptions(
+        new StringSelectMenuOptionBuilder()
+          .setLabel(category)
+          .setValue(category)
+          .setDescription(`Comandos de la categoría ${category}`)
+      );
     });
-    const embed = new EmbedBuilder()
-      .setTitle("Ayuda")
-      .setDescription(`Comandos disponibles para Categoría 1`)
-      .setColor(0x0099ff)
-      .setTimestamp();
-    commands.forEach((command) => {
-        embed.addFields({ name: command.name, value: command.description});
-    });
 
-    const buttons = new ActionRowBuilder().addComponents([
-      new ButtonBuilder()
-        .setCustomId("cancel")
-        .setLabel("Cancelar")
-        .setStyle(ButtonStyle.Danger),
-      new ButtonBuilder()
-        .setCustomId("next")
-        .setLabel("Siguiente")
-        .setStyle(ButtonStyle.Primary),
-    ]);
-    const menu = new ActionRowBuilder().addComponents([
-      new StringSelectMenuBuilder()
-        .setCustomId("select")
-        .setPlaceholder("Selecciona una opción")
-        .addOptions(
-            new StringSelectMenuOptionBuilder().setLabel("Opción 1").setValue("1").setDescription("Descripción 1").setEmoji("👍").setDefault(true),
-            new StringSelectMenuOptionBuilder().setLabel("Opción 2").setValue("2").setDescription("Descripción 2").setEmoji("🤖"),
-            new StringSelectMenuOptionBuilder().setLabel("Opción 3").setValue("3").setDescription("Descripción 3").setEmoji("😊"),
-        ),
-    ]);
-    const response = await interaction.reply({ embeds: [embed], components: [buttons, menu] });
-
-    const filter = (i) => i.user.id === interaction.user.id;
-    const collector = response.createMessageComponentCollector({
-        componentType: ComponentType.StringSelect,
-        time: 3_600_000,
-        });
-
-    collector.on("collect", async (i) => {
-       const selection = i.values[0];
-        return i.channel.send(`Seleccionaste ${selection}`);
-    }
+    const ButtonComponents = new ActionRowBuilder().addComponents(
+      cancelButton,
+      nextButton
     );
+
+    const menuComponents = new ActionRowBuilder().addComponents(menuOptions);
+
+    const response = await interaction.reply({
+      embeds: [embed],
+      components: [menuComponents, ButtonComponents],
+    });
+
+    const collector = await response.createMessageComponentCollector({
+      /* componentType: ComponentType.StringSelect, */
+      time: 3_600_000,
+    });
+
+    collector.on("collect", async (componentInteraction) => {
+
+      if(componentInteraction.user.id !== interaction.user.id){
+        await componentInteraction.followUp({
+          content: "No puedes usar este comando",
+          ephemeral: true,
+        });
+        return;
+      }
+
+      if(componentInteraction.isStringSelectMenu()){
+        const category = componentInteraction.values[0];
+        const embed = getEmbedByCategory(category);
+        return response.edit({
+          embeds: [embed],
+        });
+      }
+
+      if(!componentInteraction.isButton()) return;
+
+      if (componentInteraction.customId === "cancel") {
+        await response.edit({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle("Ayuda")
+              .setDescription("Comando cancelado")
+              .setColor(Colors.Red)
+              .setTimestamp(),
+          ],
+          components: [],
+        });
+        return collector.stop("cancel");
+      }
+
+      if (componentInteraction.customId === "next") {
+        const index = categories.indexOf(componentInteraction.values[0]);
+        const nextCategory = categories[index + 1];
+        const embed = getEmbedByCategory(nextCategory);
+
+        await componentInteraction.update({
+          embeds: [embed],
+          components: [components],
+        });
+        return;
+      }
+    });
   },
 };
 
-function setCommandsCategoryEmbed(embed, commands) {
-    commands.forEach((command) => {
-        embed.addFields({ name: command.name, value: command.description});
-    });
+function getEmbedByCategory(category) {
+  const embed = new EmbedBuilder()
+    .setTitle("Ayuda")
+    .setDescription(`Comandos disponibles para ${category}`)
+    .setColor(0x0099ff)
+    .setTimestamp();
+
+  const commands = arraySlashCommands.filter(
+    (command) => command.category === category
+  );
+  if (!commands || commands.length === 0) {
+    return embed.setDescription(`No hay comandos disponibles para ${category}`);
+  }
+
+  commands.forEach((command) => {
+    embed.addFields({ name: command.data.name, value: command.data.description });
+  });
+
+  return embed;
 }
