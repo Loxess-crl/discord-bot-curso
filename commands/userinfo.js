@@ -1,6 +1,6 @@
 import { EmbedBuilder } from "discord.js";
 import { convertDateToString } from "../utils/formatDate.js";
-import { getUserById } from "../utils/getUser.js";
+import { getMemberById, getMemberByFilter } from "../utils/getUser.js";
 
 export const userInfoCommand = {
   name: "userinfo",
@@ -8,31 +8,34 @@ export const userInfoCommand = {
 
   execute(message, args) {
 
-    const userMention = message.mentions.members.first();
-    let user_id;
-    if(userMention){
-        user_id = userMention.user.id
+    const memberMention = message.mentions.members.first();
+    let filter;
+    if(memberMention){
+        filter = memberMention.user.id
     } else if(args[0]) {
-        user_id = args[0];
+        filter = args[0];
     }
     else{
-        user_id = message.author.id
+        filter = message.author.id
     }
 
-    const user = getUserById(message, user_id);
+    if(filter.length < 3) return message.reply("El filtro debe tener al menos 3 caracteres");
 
-    if(!user) return message.reply("El usuario no existe");
+    const member = getMemberByFilter(message, filter);
+
+    if(!member) return message.reply("El usuario no existe");
     
-    const fechaRegistro = convertDateToString(user.createdAt) || 'NaN';
-    const fechaIngreso = convertDateToString(user.joinedAt);
+    const fechaRegistro = convertDateToString(member.user.createdAt) || 'NaN';
+    const fechaIngreso = convertDateToString(member.joinedAt);
 
     const messageEmbed = new EmbedBuilder()
-      .setAuthor(
-        "Información Bot",
-        "https://hips.hearstapps.com/hmg-prod/images/cute-cat-photos-1593441022.jpg?crop=1.00xw:0.753xh;0,0.153xh&resize=1200:*"
+      .setAuthor({
+        name: "Información Bot",
+        iconURL: "https://hips.hearstapps.com/hmg-prod/images/cute-cat-photos-1593441022.jpg?crop=1.00xw:0.753xh;0,0.153xh&resize=1200:*"
+      }
       )
-      .setTitle(`Información de ${user.user.username}`)
-      .setThumbnail(user.user.displayAvatarURL({dynamic: true}))
+      .setTitle(`Información de ${member.user.username}`)
+      .setThumbnail(member.user.displayAvatarURL({dynamic: true}))
       .setDescription(
         `Información del ususario en el servidor`
       )
@@ -40,10 +43,10 @@ export const userInfoCommand = {
         { name: "Registro", value: fechaRegistro === 'NaN'? '-':fechaRegistro, inline: true },
         { name: "Ingreso", value: fechaIngreso, inline: true }
       )
-      .setColor("#222E50")
-      .setFooter(`ID: ${user_id}`)
+      .setColor(0x222E50)
+      .setFooter({text: `ID: ${filter}`})
       .setTimestamp();
 
-    return message.channel.send(messageEmbed);
+    return message.channel.send({embeds: [messageEmbed]});
   },
 };
